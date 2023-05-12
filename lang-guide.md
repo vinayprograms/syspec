@@ -41,17 +41,17 @@ Language provides certain built-in datatypes that can be used to build types spe
 
 ## Set specification
 
-Sets can be specified in two ways either by 
-* Listing its members - `S := {'a', 'b', 'c'}`
-* By specifying its *form* - `S := {<shape>:<type-specification>;<predicate>}`. 
-  * `<shape>` specifies the *shape* of the elements in that set. `<shape>` can also be a regex enclosed between back-ticks.
-  * `<type-specification>` provides the source set (or from one of the built-in types) from which the elements are sourced. 
-  * `<predicate>` provides the rules that must be satisfied by each element of the set. Predicates must be specified using the `syspec` syntax.
+Sets can be specified in two ways - 
+1. Listing its members - `S := {'a', 'b', 'c'}`
+2. By specifying its *form* - `S := {<shape>:<type-specification>;<predicate>}`. 
+    * `<shape>` specifies the *shape* of the elements in that set. `<shape>` can also be a regex enclosed between back-ticks.
+    * `<type-specification>` provides the source set (or from one of the built-in types) from which the elements are sourced. 
+    * `<predicate>` provides the rules that must be satisfied by each element of the set. Predicates must be specified using the `syspec` syntax.
 
 Examples - 
-* `A = {B, C, S}` defines a set containing 3 elements (which can themselves be sets).
-* `B = {n: n in nat; n >= 1 and n <= 100}` defines a set of first 100 natural numbers.
-* `C = {x = n*n; n in nat; x >= 1 and x <= 100}` defines a set of squares between 1 and 100. In the shape specification - `x = n*n`, the left-hand-side of the equation represents the set element and right-hand-side represents what needs to be done to determine the element.
+* `A := {B, C, S}` defines a set containing 3 elements (which can themselves be sets).
+* `B := {n: n in nat; n >= 1 && n <= 100}` defines a set of first 100 natural numbers.
+* `C := {x = n*n: n in nat; x >= 1 && x <= 100}` defines a set of squares between 1 and 100. In the shape specification - `x = n*n`, the left-hand-side of the equation represents the set element and right-hand-side represents what needs to be done to determine the element.
 * `S := {}` is a null set.
 
 > NOTE: When `:=` is used, it means RHS elaborates LHS. Wherever LHS appears, RHS is processed within the context where LHS appears and the result is inserted in place of LHS.
@@ -63,7 +63,7 @@ Tuples are specified by enclosing members in square brackets. For example `[a, b
 
 Relations can be specified in three ways -
 
-* **Set specification** - A set specification preceeded by `relation` keyword is a relation. The `shape` part of the specification must have the form `<domain> -> <range>`. If not, it is a syntax error. Domain and range can be made of a single type or both can be tuples. Example - `relation S := {[a,b] -> [c,d]:a in int, b in nat, c in int, d in bool; whole(a) == b && c = fraction(a) && d = (c > 0)}`.
+* **Set specification** - A set specification preceeded by `relation` keyword is a relation. The `shape` part of the specification must have the form `<domain> -> <range>`. If not, it is a syntax error. Domain and range can be sets or tuples. Example - `relation S := {[a,b] -> [c,d]:a in int, b in nat, c in int, d in bool; whole(a) == b && c = fraction(a) && d = (c > 0)}`.
 * **Shortcut** - A shorter syntax can be used to simplify specification - `relation <name>(<param1> <input-type1>, <param2> <input-type2>, ...) -> (<param3> <return-type1>, <param4> <return-type2>) := {<predicates>}`. For example, the `S` relation can be rewritten as `relation S(a int, b int) -> (c int, d bool) := {whole(a) == b && c = fraction(a) && d = (c > 0)}`.
 
 When specifying the body of the relation, instead of using `&&` to link predicates, each predicate can be specified on a separate line. The example for `S` above can also be specified as -
@@ -79,7 +79,7 @@ relation S(a int, b int) -> (c int, d bool) := {
 ## Functions
 
 Functions are specified using the relation syntax except that the keyword would be `function` instead of `relation`. Functions have the additional constraint that they must be deterministic i.e., an element of domain should have a distinct element in range. 
-Example - `function Square := {a -> b:a in int, b in int; b = a*a}`. The *shortcut* version would be `func Square(a int) -> (b int) := {b = a*a}`. Multiline predicates are also supported.
+Example - `function Square := {a -> b:a in int, b in int; b = a*a}`. The *shortcut* version would be `function Square(a int) -> (b int) := {b = a*a}`. Multiline predicates are also supported.
 
 ## Operators
 
@@ -87,25 +87,33 @@ Following are the list of pre-defined operators
 * **Unary operators**
   - `!` is used to negate a boolean, 
   - A power set is defined by putting a `^` before a set identifier (for example `^A`).
+  - When `|` and `&` precede a power set (for example, `&A`) then it is considered as distributed-union(`|A`) or distributed-intersection(`&A`) of that power set. If the set is not a power-set then it is converted to one by converting each element into a set.
 * **Binary operators**
-  - There are no binary operators for `bool`.
-  - Comparison operators - `==`, `>`, `<`, `>=`, `<=` and `!=`, can accept sets or elements. 
+  - `&&` and `||` can be used to process boolean values or predicates (that evaluate to boolean values).
+  - Comparison operators - `==`, `>`, `<`, `>=`, `<=` and `!=`, can accept sets or elements. They always return a boolean
     - When applied to elements, their classic meaning (of comparing values) is used.
     - When applied to sets they mean `same`, `proper superset`, `proper subset`, `superset`, `subset` and `not same` respectively.
   - `\` means set-difference
   - `*` means cartesian product of sets. `*` retains its classic meaning (i.e., *multiplication*) when applied to elements that use one of the base datatypes.
   - `+` and `-` mean addition and subtraction respectively for `int`, `nat`, `real`, `date`, `time` and `datetime`. For `string` only `+` is supported and it means "string concatenation" as well as for appending a `char` to a `string`. `+` is not supported between `char`s.
-  - `|` and `&` are available only for sets.`|` and `&` are used for set union and intersection respectively and if these two operators appear before a set identifier (like `&A`) then it is considered as distributed-union or distributed-intersection of that power set. In case of the later, they are treated as unary operators.
-  - `=>` means implies. Both sides of the operator must be booleans (boolean variables or functions that evaluate to `true`/`false`).
-  > No operators are supported for `uuid` and `url`.
+  - `|` and `&` are available only for sets.`|` and `&` are used for set union and intersection respectively.
+  - `=>` means *implies*. Both sides of the operator must be booleans (boolean variables or functions that evaluate to boolean).
+  - Only comparison operators - `==` and `!=` are supported for `uuid` and `url`.
 * When specifying a predicate with multiple members and operators, parentheses can be used to group them and also to provide precedence information. For example - `(A & B) & C` between 3 sets `A`, `B` and `C` is performed between `A` and `B` first and the result is then used with `C`.
 
-When applying to custom set specifications, operators are treated as functions where the function name is one of the operator symbols described above. The domain can either be a single set or a 2-tuple. The range should always be a single set. They follow the same syntax (all 3 options) as functions. But the keyword used is `operator` instead of `function`. The host set to which this operator must apply is indicated by restricting the first parameter of the operator to the host set. For binary operators, the second parameter must satisfy the constraints applied to that operator in terms of the types that operator supports.
+When applying to custom specifications, operators are treated as functions. The function name is one of the operator symbols described above. The domain can either be a single set (for unary operators) or a 2-tuple (for binary operators). The range should always be a single set. They follow the same syntax as functions except that the keyword used is `operator` instead of `function`. The first parameter is used to identify the rest of the restrictions that must be applied to members of that operator. Example -
+```
+S := {"A", "B", "C", "D", "E"}
+operator && (lhs S, rhs S) -> (result bool) := { result := (lhs == "A") }
+```
 
 ## Iterations / Loops
 
 This language doesn't support looping constructs like `for`, `forall`, `foreach`, `while`, etc. Instead you can use the existing `x in S` notation. Example - `x in S: { <predicates to apply to each element 'x'> }`.
-> The exact meaning of `x in S` depends on the context where it is used. In set specification, `x in S` is followed by a `;` and the predicate. For iterations, `x in S` is followed by `:` and then the predicate(s) that are part of the iteration.
+
+> `x in S` is an overloaded phrase in this language. It's meaning depends on the context where it is used. 
+> - In set specification, `x in S` is followed by a `;` and the predicate. 
+> - For iterations, `x in S` is followed by `:` and then the predicate(s) that are part of the iteration.
 
 ## Composition
 
@@ -114,7 +122,7 @@ Relations and functions can be composed to form complex ones. For example `r1(r2
 
 ## Built-in functions
 
-Built-in functions are functions that are available for built-in types and for any types defined in code. For types defined in code, these must be overloaded (similar to how it is done in C++ and similar languages).
+Built-in functions are functions that are available for built-in types and for any types defined in code.
 - `domain(A)` on a relation `A` returns its domain set.
 - `range(A)` on a relation `A` returns its range set.
 - `inverse(A)` on a relation `A` returns another relation that is the inverse `A` i.e., if `A` is `B -> C` then `inverse(A)` would be `C -> B`. Here the mapping information from `A` is used to infer the map for the inverse.
@@ -146,16 +154,21 @@ Built-in functions are functions that are available for built-in types and for a
 - `distributive(A, <function/operation>, <function/operation>)` returns true if elements of `A` satisfy distributive property. 
   > Using distributive property's formal definition, `+` is represented by the first function/operation argument and `*` is represented by the second function/operation argument.
 
+For custom types specified in your code, these must be overloaded, similar to how it is done in C++ and similar languages. Overloading is done by replacing the *type* of the function parameter(s). Example - 
+```
+S := {"A", "B", "C", "D", "E"}
+function count(s S) -> (c nat) := { c = 5 }
+```
+
 ## Additional syntax for relations/functions/opeartors
 
-A relation/function/operator can be scoped to a specific set / type by using the `on <type>` operator. Example -
+The concept of member-functions doesn't exist in *syspec*. Instead, membership is inferred by looking at the parameters. In the example below, `Func` is automatically scoped to `S` since the first parameter is of type `S`.
 ```
 S := {x: x in nat; P(x)}
-function Func(i int, b bool) -> bool on S: {
+function Func(s S, limit nat) -> (c bool) := {
   # List of predicates to apply.
 }
 ```
-In such cases, the host set's members can be part of domain and/or range (depending on the function). Additionally, all properties and constraints associated with the host set are automatically assigned to all parameters and local sets of this function. 
 
 When specifying a relation, function or operation, if you want it to satisfy specific properties, you can add them as attributes of that relation/function/operation usind the `@`. Multiple properties can be added using `@[]`. Parser/Analyzer will flag an analysis error when that relation/function/operation doesn't satisfy all those properties. Examples -
 ```
@@ -169,7 +182,7 @@ function f(x nat, y nat) -> (z int) {...}
 
 ## Relational Algebra
 
-Relational algebra opearations, the most common operations used in database analysis, are supported.
+The most common relational algebra operations used in database analysis are provided as built-in functions.
 
 * `projection(A, [])` returns the projection of a tuple `A` by picking attributes referred to by the indices in the supplied tuple.
 * `select(A, <predicate>)` picks only those members of tuple `A` that satisfy `<predicate>`. 
@@ -179,8 +192,8 @@ Relational algebra opearations, the most common operations used in database anal
 ## Abstract algebra
 
 Specific algebraic structures can be implied using the associated keyword - `magma`, `quasi` (for *quasi group*), `semigroup`, `monoid`, `group`, `abelian`, `ring`, `comring` (for *commutative ring*), `integral`, `field` and `loop`. For example `group A := {x: x in int: P(x)}` will define a group and will apply all properties a group must satify to the set `A`. 
-Any additional functions defined for these structures, must satisfy all property constraints of the structure. This rule doesn't apply to morphisms that may map the structure to another set (that may/may-not be of the same type).
+Any additional functions defined for these structures, must satisfy all property constraints of the structure. This limitation doesn't apply to morphisms that may map the structure to another set (that may/may-not be of the same type).
 
 ## Custom datatypes
 
-New set types and structures can be built using existing ones. Custom types can either be a subset of a basic type/structure or a tuple made out of subsets.
+As you may have noticed from the examples above, new datatypes and structures can be built using existing ones. Custom types can either be a subset of a basic type/structure or a tuple made out of subsets.
